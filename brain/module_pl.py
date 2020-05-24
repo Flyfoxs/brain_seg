@@ -11,11 +11,13 @@ from brain.module_unet import *
 
 class BrainModel(pl.LightningModule):
 
-    def __init__(self, model=None, hparams=None, ex=None):
+    def __init__(self, hparams=None, ex=None):
         super(BrainModel, self).__init__()
-        self.unet = model or dynamic_unet(models.resnet50,
-                                          n_classes=hparams.n_classes,
-                                          img_size=hparams.img_size)
+
+        model_name = hparams.model_name
+        model_fn = UNET_MODEL.get(model_name)
+        self.unet = model_fn(n_classes=hparams.n_classes,
+                             img_size=hparams.img_size)
         # self.loss_fn = DICELoss().cuda()
         # self.loss_fn = partial(F.cross_entropy, weight=torch.tensor([0.5, 1]).cuda())
         self.loss_fn = F.cross_entropy
@@ -54,7 +56,7 @@ class BrainModel(pl.LightningModule):
         dice_cls = dice.mean(dim=0)
         dice = dice_cls.mean()
 
-        print({'eopch': self.current_epoch, f'val_loss': round(float(avg_loss), 4), 'dice': dice_cls})
+        print('\n', {'eopch': self.current_epoch, f'val_loss': round(float(avg_loss), 4), 'dice': dice_cls})
         if self.ex:
             self.ex.log_scalar('ce', round(float(avg_loss), 5), self.current_epoch)
 
