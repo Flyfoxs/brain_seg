@@ -32,7 +32,7 @@ def main(_config):
     print('=====', hparams)
 
     print(f'hparams:{hparams}')
-    brain_model = BrainModel(hparams=hparams)
+    brain_model = BrainModel(hparams=hparams, ex=get_ex())
 
     trainer = pl.Trainer(gpus=1,
                          max_epochs=hparams.epochs,
@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     args = edict()
 
-    args.epochs = 10
+    args.epochs = 20
     args.lr = 1e-4
     args.n_classes = 5
     args.img_size = (224, 224)

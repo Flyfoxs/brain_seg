@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+#os.environ["CUDA_VISIBLE_DEVICES"]="0"
 from file_cache import *
 from fastai.vision import *
 from fastai.callbacks.hooks import *

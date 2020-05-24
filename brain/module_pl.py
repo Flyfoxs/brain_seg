@@ -22,6 +22,7 @@ class BrainModel(pl.LightningModule):
 
         self.hparams = hparams
         self.ex = ex
+        if self.ex is None: print('Ex is None')
 
     def forward(self, x):
         # called with self(x)
@@ -86,7 +87,7 @@ class BrainModel(pl.LightningModule):
         #                                           steps_per_epoch=len(self.data_loader),
         #                                           epochs=10)
 
-        #print('steps_per_epoch', len(self.train_dataloader()))
+        # print('steps_per_epoch', len(self.train_dataloader()))
 
         opt = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.99))
         # scheduler = optim.lr_scheduler.OneCycleLR(opt, max_lr=self.hparams.lr,
