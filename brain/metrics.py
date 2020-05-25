@@ -25,8 +25,8 @@ def dice_multiply(logits, targets, cls_id=None):
 
     dice_list = []
     for class_index in range(class_cnt):
-        predict = logits.argmax(axis=1)
-        target = targets == class_index
+        predict = logits.argmax(axis=1) == class_index
+        target = (targets == class_index)
 
         predict = predict.view(batch_size, -1)
         target = target.view(batch_size, -1)

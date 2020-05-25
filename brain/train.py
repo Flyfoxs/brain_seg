@@ -38,8 +38,8 @@ def main(_config):
     trainer = pl.Trainer(gpus=1,
                          max_epochs=hparams.epochs,
                          num_sanity_val_steps=0,
-                         progress_bar_refresh_rate=300,
-                         #weights_summary=None
+                         progress_bar_refresh_rate=999999,
+                         weights_summary=None
                          )
     trainer.fit(brain_model)
 

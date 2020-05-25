@@ -19,8 +19,8 @@ class BrainModel(pl.LightningModule):
         self.unet = model_fn(n_classes=hparams.n_classes,
                              img_size=hparams.img_size)
         # self.loss_fn = DICELoss().cuda()
-        # self.loss_fn = partial(F.cross_entropy, weight=torch.tensor([0.5, 1]).cuda())
-        self.loss_fn = F.cross_entropy
+        self.loss_fn = partial(F.cross_entropy, weight=torch.tensor([1.0, 1, 1, 1, 1]).cuda())
+        # self.loss_fn = F.cross_entropy
 
         self.hparams = hparams
         self.ex = ex
