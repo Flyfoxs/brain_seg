@@ -34,12 +34,15 @@ def main(_config):
     hparams = edict(_config)
     print(f'=====hparams:{hparams}')
     brain_model = BrainModel(hparams=hparams, ex=get_ex())
+    from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
+    lr_logger = LearningRateLogger()
 
     trainer = pl.Trainer(gpus=1,
                          max_epochs=hparams.epochs,
                          num_sanity_val_steps=0,
                          progress_bar_refresh_rate=999999,
-                         weights_summary=None
+                         weights_summary=None,
+                         callbacks=[lr_logger]
                          )
     trainer.fit(brain_model)
 

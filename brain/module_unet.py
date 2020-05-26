@@ -9,7 +9,7 @@ UNET_MODEL = Registry("UNET_MODEL")
 
 
 @UNET_MODEL.register()
-def dynamic_unet(arch: Callable=models.resnet50, pretrained: bool = False, blur_final: bool = True,
+def dynamic_unet(arch: Callable=models.resnet34, pretrained: bool = True, blur_final: bool = True,
                  norm_type: Optional[NormType] = NormType, split_on: Optional[SplitFuncOrIdxList] = None,
                  blur: bool = False,
                  self_attention: bool = False, y_range: Optional[Tuple[float, float]] = None, last_cross: bool = True,
@@ -28,8 +28,8 @@ def dynamic_unet(arch: Callable=models.resnet50, pretrained: bool = False, blur_
 
 
 @UNET_MODEL.register()
-def unet_normal(n_classes=2, img_size=(224, 224)):
+def unet_normal(*args, **kwargs):
     from model.unet import UNet
-    unet = UNet(in_channels=3, n_classes=n_classes, padding=True, depth=5, up_mode='upsample', batch_norm=True, residual=False)
-    print(unet)
+    unet = UNet(in_channels=3, n_classes=5, padding=True, depth=5, up_mode='upsample', batch_norm=True, residual=False)
+    #print(unet)
     return unet

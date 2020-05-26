@@ -7,6 +7,7 @@ from brain.metrics import dice_multiply
 from dataset.ds_brain import DataSet_brain
 import torch
 from brain.module_unet import *
+from dataset.ds_brain_fastai import *
 
 
 class BrainModel(pl.LightningModule):
@@ -19,10 +20,14 @@ class BrainModel(pl.LightningModule):
         self.unet = model_fn(n_classes=hparams.n_classes,
                              img_size=hparams.img_size)
         # self.loss_fn = DICELoss().cuda()
-        self.loss_fn = partial(F.cross_entropy, weight=torch.tensor([1.0, 1, 1, 1, 1]).cuda())
+        self.loss_fn = partial(F.cross_entropy,
+                               weight=torch.tensor([1, 1, 1, 1, 1.0]).cuda())
         # self.loss_fn = F.cross_entropy
 
-        self.hparams = hparams
+        print(hparams)
+        self.hparams = dict(hparams)
+
+
         self.ex = ex
         if self.ex is None: print('Ex is None')
 
@@ -35,7 +40,10 @@ class BrainModel(pl.LightningModule):
         # REQUIRED
         x, y = batch
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
+
+        y = torch.squeeze(y, dim=1)
+        # print('training_step', y_hat.shape, y.shape)
+        loss = self.loss_fn(y_hat, y)
 
         # print(y_hat.shape, y.shape, loss)
         tensorboard_logs = {'train_loss': loss}
@@ -44,6 +52,7 @@ class BrainModel(pl.LightningModule):
     def validation_step(self, batch, batch_nb):
         # OPTIONAL
         x, y = batch
+        y = torch.squeeze(y, dim=1)
         y_hat = self(x)
         # ipdb.set_trace()
         return {'val_loss': self.loss_fn(y_hat, y), 'dice': dice_multiply(y_hat, y)}
@@ -54,13 +63,18 @@ class BrainModel(pl.LightningModule):
         # ipdb.set_trace()
         dice = torch.stack([x['dice'] for x in outputs])
         dice_cls = dice.mean(dim=0)
-        dice = dice_cls.mean()
+        dice_min = dice_cls.min()
 
-        print('\n', {'eopch': self.current_epoch, f'val_loss': round(float(avg_loss), 4), 'dice': dice_cls})
+        print('\n', {'epoch': self.current_epoch,
+                     'val_loss': round(float(avg_loss), 4),
+                     'dice': round(float(dice_min), 4),
+                     'dice_all': list(dice_cls.numpy().round(4))
+                     }),
         if self.ex:
             self.ex.log_scalar('ce', round(float(avg_loss), 5), self.current_epoch)
+            self.ex.log_scalar('dice', round(float(dice_min), 5), self.current_epoch)
 
-        tensorboard_logs = {'val_loss': avg_loss, 'dice': dice}
+        tensorboard_logs = {'val_loss': avg_loss, 'dice': dice_min}
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
     def test_step(self, batch, batch_nb):
@@ -91,25 +105,30 @@ class BrainModel(pl.LightningModule):
 
         # print('steps_per_epoch', len(self.train_dataloader()))
 
-        opt = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, betas=(0.9, 0.99))
+        opt = torch.optim.Adam(self.parameters(), lr=self.hparams['lr'], betas=(0.9, 0.99))
         # scheduler = optim.lr_scheduler.OneCycleLR(opt, max_lr=self.hparams.lr,
         #                                           steps_per_epoch=len(self.train_dataloader()),
         #                                           epochs=self.hparams.epochs)
 
-        scheduler = optim.lr_scheduler.StepLR(opt, step_size=5)
+        scheduler = optim.lr_scheduler.StepLR(opt, step_size=10)
+
+        print('schedule', scheduler)
         return [opt], [scheduler]
 
     def train_dataloader(self):
         # REQUIRED
-        return DataLoader(DataSet_brain('train'), batch_size=2, shuffle=True)
+        return get_dl('train')
+        # return DataLoader(get_ds('train'), batch_size=8, shuffle=True)
         # return DataLoader(MNIST(os.getcwd(), train=True, download=True, transform=transforms.ToTensor()), batch_size=32)
 
     def val_dataloader(self):
         # OPTIONAL
-        return DataLoader(DataSet_brain('valid'), batch_size=2, )
+        return get_dl('valid')
+        # return DataLoader(get_ds('valid'), batch_size=2, )
         ##return DataLoader(MNIST(os.getcwd(), train=True, download=True, transform=transforms.ToTensor()), batch_size=32)
 
     def test_dataloader(self):
         # OPTIONAL
-        return DataLoader(DataSet_brain('valid'), batch_size=2, )
+        return get_dl('valid')
+        # return DataLoader(get_ds('valid'), batch_size=2, )
         # return DataLoader(MNIST(os.getcwd(), train=False, download=True, transform=transforms.ToTensor()), batch_size=32)

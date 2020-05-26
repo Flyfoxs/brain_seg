@@ -52,7 +52,7 @@ class DataSet_brain(Dataset):
     @lru_cache()
     def get_df(self):
 
-        img_file_list = glob('/share/data2/body/brain/train/image/**/*.*', recursive=True)
+        img_file_list = glob('/share/data2/body/brain/train/image/*MRI*/**/*.*', recursive=True)
 
         df = pd.DataFrame({'img_file': img_file_list})
         df['p_id_path'] = df.img_file.apply(lambda val: os.path.dirname(val))
