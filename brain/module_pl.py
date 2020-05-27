@@ -65,11 +65,11 @@ class BrainModel(pl.LightningModule):
         dice_cls = dice.mean(dim=0)
         dice_min = dice_cls.min()
 
-        print('\n', {'epoch': self.current_epoch,
-                     'val_loss': round(float(avg_loss), 4),
-                     'dice': round(float(dice_min), 4),
-                     'dice_all': list(dice_cls.numpy().round(4))
-                     }),
+        # print('\n', {'epoch': self.current_epoch,
+        #              'val_loss': round(float(avg_loss), 4),
+        #              'dice': round(float(dice_min), 4),
+        #              'dice_all': list(dice_cls.numpy().round(4))
+        #              }),
         if self.ex:
             self.ex.log_scalar('ce', round(float(avg_loss), 5), self.current_epoch)
             self.ex.log_scalar('dice', round(float(dice_min), 5), self.current_epoch)

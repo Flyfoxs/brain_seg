@@ -2,6 +2,7 @@ import os
 import sys
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+from pytorch_lightning.callbacks import EarlyStopping
 
 from brain.module_pl import *
 
@@ -14,6 +15,8 @@ from sacred.observers import MongoObserver
 
 from sacred.arg_parser import get_config_updates
 
+from callback.pl_callback import MetricLogger
+from file_cache import *
 db_url = 'mongodb://sample:password@10.10.20.107:27017/db?authSource=admin'
 
 
@@ -35,15 +38,18 @@ def main(_config):
     print(f'=====hparams:{hparams}')
     brain_model = BrainModel(hparams=hparams, ex=get_ex())
     from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
-    lr_logger = LearningRateLogger()
-
+    #lr_logger = LearningRateLogger()
+    metric_logger = MetricLogger()
+    #early_stop = EarlyStopping()
     trainer = pl.Trainer(gpus=1,
                          max_epochs=hparams.epochs,
                          num_sanity_val_steps=0,
-                         progress_bar_refresh_rate=999999,
+                         show_progress_bar=False,
+                         progress_bar_refresh_rate=0,
                          weights_summary=None,
-                         callbacks=[lr_logger]
+                         callbacks=[metric_logger]
                          )
+
     trainer.fit(brain_model)
 
 
