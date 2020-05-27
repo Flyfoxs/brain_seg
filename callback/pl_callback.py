@@ -44,7 +44,7 @@ class MetricLogger(Callback):
         self.metrics_list = []
 
     def on_train_start(self, trainer, pl_module):
-        # print('on_train_begin')
+        print('checkpoint, v_num = ', trainer.logger.version)
         pass
 
     def on_epoch_start(self, trainer, pl_module):
@@ -53,23 +53,23 @@ class MetricLogger(Callback):
     def on_epoch_end(self, trainer, pl_module):
         trn_dur = format_time(time() - self.start_train)
         ep_dur = format_time(time() - self.start_epoch)
-        v_num = trainer.logger.version
 
         logs = trainer.callback_metrics.copy()
         for k, v in logs.items():
             logs[k] = convert_tensor(v)
 
         log_dict = edict(logs)
-        log_dict.v_num = v_num
         log_dict.trn_dur = trn_dur
         log_dict.ep_dur = ep_dur
         log_dict.ct = str(pd.to_datetime('now'))[:19]
         self.metrics_list.append(log_dict)
 
-        key_list = list(logs.keys()) + ['v_num',  'ep_dur', 'trn_dur', 'ct']
+        key_list = list(logs.keys()) + ['ep_dur', 'trn_dur', 'ct']
         key_list.remove('loss')
         if trainer.current_epoch == 0: print(key_list)
         print('\t  '.join(["%0.4f" % log_dict[key] if isinstance(log_dict[key], float) else str(log_dict[key]) for key in key_list]))
 
     def on_train_end(self, trainer, pl_module):
-        print(pd.DataFrame(self.metrics_list))
+        df = pd.DataFrame(self.metrics_list)
+        df = df.drop(columns=['loss', 'epoch', 'v_num', 'ct'])
+        print(df)
