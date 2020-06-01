@@ -1,13 +1,22 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from file_cache import *
+import torch
+from .transform import *
+import torch.nn.functional as F
+from fastai.vision import imagenet_stats
+import albumentations as A
+from   albumentations.pytorch.transforms import ToTensorV2
+#https://debuggercafe.com/image-augmentation-using-pytorch-and-albumentations/
 
 
+from PIL import Image
 class DataSet_brain(Dataset):
 
-    def __init__(self, ds_type='train'):
-        self.image_size = 256
+    def __init__(self, ds_type='train', imgaug=True):
+        print('DataSet_brain', locals())
         self.ds_type = ds_type
+        self.imgaug = imgaug
 
         df = self.get_df()
 
@@ -18,36 +27,16 @@ class DataSet_brain(Dataset):
         elif ds_type == 'valid':
             self.df = df.loc[df.valid == True]
 
-    #         self.transforms = transforms.Compose([transforms.ToTensor(),
-    #                       transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    #                       transforms.Resize(224)
-    #                      ])
+        self.transforms_train = transforms.Compose([
+                        transforms.ToTensor(),
+                        Resize(mode='bilinear'),
+                      #transforms.Normalize(*imagenet_stats),
+                     ])
 
-    def transform(self, image, mask):
-        # print(image.shape, mask.shape)
-        # Resize
-        resize_img = transforms.Compose([transforms.ToTensor(),
-                                         # transforms.Lambda(lambda x: x.repeat(3, 1, 1) ),
-                                         transforms.ToPILImage(),
-                                         transforms.Resize((224, 224)),
-                                         transforms.ToTensor(),
-                                         ])
+        self.transforms_valid = transforms.Compose([
+                     Resize(mode='nearest'),
+        ])
 
-        resize_label = transforms.Compose([transforms.ToPILImage(),
-                                           transforms.Resize((224, 224)),
-
-                                           ])
-        image = resize_img(image)
-        mask = resize_label(mask)
-        mask = np.array(mask).astype(int)
-
-        return np.array(image), mask
-
-    def get_p_cnt(self, file):
-        label = nib.load(file).get_fdata()
-        label = np.where(label > 0, 1, 0)
-        label = label.sum(axis=0).sum(axis=0)
-        return label
 
     @lru_cache()
     def get_df(self):
@@ -67,22 +56,17 @@ class DataSet_brain(Dataset):
         return df
 
     def __getitem__(self, index):
-        img = self.df.img_file.iloc[index]
-        # print(img)
-        img = cv2.imread(img)
-        # print(img)
-        img = (img - img.min()) / (img.max() - img.min())
 
-        # slice_sn = self.df.slice_sn.iloc[index]-1
-        # print(slice_sn)
+        image = self.df.img_file.iloc[index]
+        image = Image.open(image).convert('RGB')
+        image = self.transforms_train(image)
 
         label = self.df.label_path.iloc[index]
-        # print(label)
-        label = cv2.imread(label)[:, :, 0]
+        label = cv2.imread(label, 0)
+        label = torch.Tensor(np.stack([label]*3))
+        label = self.transforms_valid(label)
+        return torch.tensor(image, dtype=torch.float), torch.tensor(label)[0].round().long()
 
-        # print(img.dtype, label.dtype)
-        # return img, label
-        return self.transform(img.astype(np.float32), label.astype(np.uint8))
 
     def __len__(self):
         return len(self.df)

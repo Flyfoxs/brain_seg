@@ -5,6 +5,9 @@ import sys
 from pytorch_lightning.callbacks import EarlyStopping
 
 from brain.module_pl import *
+from dataset.ds_brain import *
+from dataset.ds_brain_fastai import *
+from dataset.img_prepare import *
 
 from task_distribute.locker import task_locker
 from easydict import EasyDict as edict
@@ -31,12 +34,14 @@ def get_ex():
 
 ex = get_ex()
 
+for file in glob('./**/*.py', recursive=True):
+    ex.add_source_file(file)
 
 @ex.command()
 def main(_config):
     hparams = edict(_config)
     print(f'=====hparams:{hparams}')
-    brain_model = BrainModel(hparams=hparams, ex=get_ex())
+    brain_model = BrainModel(hparams=hparams, ex=get_ex(), dl_type=hparams.dl_type, imgaug=hparams.imgaug)
     from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
     #lr_logger = LearningRateLogger()
     metric_logger = MetricLogger()
@@ -69,9 +74,11 @@ if __name__ == '__main__':
     args.n_classes = 5
     args.img_size = (224, 224)
     args.model_name = 'dynamic_unet'
+    args.dl_type = 'normal'
+    args.imgaug = True
 
     args.seed = np.random.randint(0, 1000)
-    args.version = 'rand'
+    args.version = 'rand1'
 
     real_conf = args
     real_conf.update(argv_conf)

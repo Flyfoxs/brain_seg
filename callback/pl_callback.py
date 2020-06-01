@@ -71,5 +71,5 @@ class MetricLogger(Callback):
 
     def on_train_end(self, trainer, pl_module):
         df = pd.DataFrame(self.metrics_list)
-        df = df.drop(columns=['loss', 'epoch', 'v_num', 'ct'])
+        df = df.drop(columns=['loss', 'epoch', 'ct'], errors='ignore')
         print(df)

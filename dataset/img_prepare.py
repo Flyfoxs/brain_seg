@@ -71,14 +71,17 @@ class DataSet_brain(Dataset):
         label = nib.load(label).get_fdata()
         label = label[:, :, slice_sn].T
 
-        label_path = img_path.replace('/NPH_PROCESSED/', '/train/label/')
-        img_path = img_path.replace('/NPH_PROCESSED/', '/train/image/')
+        label_path = img_path.replace('/NPH_PROCESSED/', '/train_v2/label/')
+        img_path = img_path.replace('/NPH_PROCESSED/', '/train_v2/image/')
 
         os.makedirs(os.path.dirname(label_path), exist_ok=True)
         os.makedirs(os.path.dirname(img_path), exist_ok=True)
 
         # print(img_path)
+        #img = cv2.resize(img, (224,224))
         cv2.imwrite(f'{img_path}_{slice_sn:02}_{p_cnt:05}.png', img * 255)
+
+        #label = cv2.resize(label, (224, 224))
         cv2.imwrite(f'{label_path}_{slice_sn:02}_{p_cnt:05}.png', label)
         # print(img.dtype, label.dtype)
         # return img, label
@@ -88,10 +91,10 @@ class DataSet_brain(Dataset):
     def __len__(self):
         return len(self.df)
 
-
-ds = DataSet_brain()
-for sn, (a, b) in tqdm(enumerate(ds), total=len(ds)):
-    pass
+if __name__ == '__main__':
+    ds = DataSet_brain()
+    for sn, (a, b) in tqdm(enumerate(ds), total=len(ds), desc='Prepare DS'):
+        pass
 
 
 # ds = DataSet_brain('valid')
