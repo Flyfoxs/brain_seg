@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from medpy.metric.binary import hd95
 
 
 def dice(input: Tensor, targs: Tensor, iou: bool = False, eps: float = 1e-8):
@@ -45,3 +46,30 @@ def dice_multiply(logits, targets, cls_id=None):
         return torch.Tensor(dice_list)
     else:
         return torch.Tensor(dice_list)[cls_id]
+
+
+def hd95_multiply(logits, targets, cls_id=None):
+    if isinstance(logits, torch.Tensor):
+        logits = logits.cpu().numpy()
+        targets = targets.cpu().numpy()
+    batch_size, class_cnt = logits.shape[0], logits.shape[1]
+
+    #print('batch_size, class_cnt ', batch_size, class_cnt )
+    hd95_score = []
+    for class_index in range(class_cnt):
+        #print(class_index, np.unique(logits.argmax(axis=1)))
+        predict = logits.argmax(axis=-3) == class_index
+        target = (targets == class_index)
+
+        #print('predict, target', class_index, predict.shape, target.shape,
+              #predict.sum(), target.sum(), np.unique(targets))
+        score = [hd95(res, ref) for res, ref in zip(predict, target)
+                 if np.count_nonzero(res) > 0 and np.count_nonzero(ref) > 0]
+        #print('class_index=', class_index, score)
+        hd95_score.append(np.mean(score))
+    #print('hd95_score', hd95_score)
+
+    if cls_id is None:
+        return torch.Tensor(hd95_score)
+    else:
+        return torch.Tensor(hd95_score)[cls_id]

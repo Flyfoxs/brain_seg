@@ -72,4 +72,7 @@ class MetricLogger(Callback):
     def on_train_end(self, trainer, pl_module):
         df = pd.DataFrame(self.metrics_list)
         df = df.drop(columns=['loss', 'epoch', 'ct'], errors='ignore')
+        pd.set_option('display.max_rows', 500)
+        pd.set_option('display.max_columns', 500)
+        pd.set_option('expand_frame_repr', False)
         print(df)

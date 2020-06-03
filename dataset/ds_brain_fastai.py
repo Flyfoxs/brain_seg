@@ -1,4 +1,4 @@
-from fastai.vision import SegmentationItemList
+from fastai.vision import SegmentationItemList, get_transforms
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from file_cache import *
@@ -36,7 +36,7 @@ def get_data_bunch() -> ImageDataBunch:
 
     print(len(src.train), len(src.valid))
 
-    # get_transforms()
+
     data = (src.transform(None, size=224, tfm_y=True)
             .databunch(bs=8)
             .normalize(imagenet_stats)
@@ -53,12 +53,12 @@ def get_dl(ds_type='train'):
     print('get_dl=', ds_type)
     data = get_data_bunch()
 
-    norm_stat = imagenet_stats
-    norm, denorm = normalize_funcs(*norm_stat, do_x=True, do_y=False)
+    # norm_stat = imagenet_stats
+    # norm, denorm = normalize_funcs(*norm_stat, do_x=True, do_y=False)
 
     if ds_type == 'train':
-        return data.train_dl.create(data.train_ds, bs=8, shuffle=True, tfms=norm).dl
+        return data.train_dl #.create(data.train_ds, bs=8, shuffle=True, tfms=norm).dl
     elif ds_type == 'valid':
-        #return data.valid_dl.create(data.valid_ds, bs=8, shuffle=False, tfms=norm).dl
-        return data.valid_dl.create(DataSet_brain('valid'), bs=8, shuffle=False, tfms=None).dl
+        #return data.valid_dl #.create(data.valid_ds, bs=8, shuffle=False, tfms=norm).dl
+        return data.valid_dl#.create(DataSet_brain('valid'), bs=8, shuffle=False, tfms=None).dl
         #return data.valid_dl.dl

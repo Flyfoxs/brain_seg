@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 # from torch.optim.lr_scheduler import OneCycleLR
 from torch.optim import lr_scheduler
 
-from brain.metrics import dice_multiply
+from brain.metrics import dice_multiply, hd95_multiply
 # from brain.unet_model import *
 from dataset.ds_brain import DataSet_brain
 import torch
@@ -10,6 +10,7 @@ from brain.module_unet import *
 from dataset.ds_brain_fastai import *
 from dataset.ds_brain import *
 from fastai.basic_data import *
+from hausdorff import hausdorff_distance
 
 
 def denormalize(x: torch.Tensor, mean: torch.Tensor = torch.Tensor(imagenet_stats[0]),
@@ -73,11 +74,13 @@ class BrainModel(pl.LightningModule):
         # OPTIONAL
         x, y = batch
         y = torch.squeeze(y, dim=1)
-        if batch_idx == 0 and self.current_epoch == 0:
-            print(self.current_epoch, batch_idx, float(x.sum()), float(y.sum()), y.shape)
         y_hat = self(x)
 
-        return {'val_loss': self.loss_fn(y_hat, y), 'dice': dice_multiply(y_hat, y)}
+
+        return {'val_loss': self.loss_fn(y_hat, y),
+                'dice': dice_multiply(y_hat, y),
+                'hd95': hd95_multiply(y_hat,y),
+                }
 
     def validation_epoch_end(self, outputs):
         # OPTIONAL
@@ -86,11 +89,21 @@ class BrainModel(pl.LightningModule):
         dice = torch.stack([x['dice'] for x in outputs])
         dice_cls = dice.mean(dim=0)
         dice_min = dice_cls.min()
+
+        hd95 = torch.stack([x['hd95'] for x in outputs])
+        hd95_cls = torch.Tensor(np.nanmean(hd95.cpu().numpy(),axis=0))
+        hd95_min = hd95_cls.min()
+
         if self.ex:
             self.ex.log_scalar('ce', round(float(avg_loss), 5), self.current_epoch)
             self.ex.log_scalar('dice', round(float(dice_min), 5), self.current_epoch)
+            #self.ex.log_scalar('hd95', round(float(hd95_min), 5), self.current_epoch)
 
-        tensorboard_logs = {'val_loss': avg_loss, 'dice': dice_min}
+        tensorboard_logs = {'val_loss': avg_loss,
+                            'dice': dice_min,
+                            **dict([(f'dice_{i}', dice_cls[i]) for i in range(5)]),
+                            #**dict([(f'hd95_{i}', hd95_cls[i]) for i in range(5)]),
+                            }
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
     def test_step(self, batch, batch_idx):
