@@ -45,6 +45,7 @@ class EfficientUnet(nn.Module):
         if self.concat_input:
             self.up_conv_input = up_conv(64, 32)
             self.double_conv_input = double_conv(self.size[4], 32)
+        print('self.size[5], out_channels, kernel_size', self.size[5], out_channels)
 
         self.final_conv = nn.Conv2d(self.size[5], out_channels, kernel_size=1)
 
@@ -175,14 +176,24 @@ class EfficientUnet(nn.Module):
         return x
 
 
-def get_efficientunet(name='b0', out_channels=5, concat_input=True, pretrained=True):
+def get_efficientunet(name='b0', out_channels=5, concat_input=True):
     from efficientnet_pytorch import EfficientNet
     encoder = EfficientNet.from_pretrained(f'efficientnet-{name}')
     # encoder = EfficientNet.encoder('efficientnet-b0', pretrained=pretrained)
     model = EfficientUnet(encoder, out_channels=out_channels, concat_input=concat_input)
     return model
 
+if __name__ == '__main__':
 
-for i in range(7):
-    tmp = get_efficientunet(f'b{i}')
-    print(tmp(torch.rand(1, 3, 224, 224)).shape)
+    from torchvision import models
+    from model.dynamic_unet import EfficientUnet
+    encoder = models.resnet50(())
+    unet = EfficientUnet(encoder, out_channels=5, concat_input=True)
+    unet(torch.rand(1, 3, 224, 224))
+
+
+
+    for i in range(7):
+        tmp = get_efficientunet(f'b{i}')
+        print(tmp(torch.rand(1, 3, 224, 224)).shape)
+
