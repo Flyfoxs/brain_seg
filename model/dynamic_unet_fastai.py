@@ -29,45 +29,30 @@ def get_unet_config(model, img_size=(512, 512)):
     layers = []
 
     def hook(module, input, output):
-        try:
-            nonlocal count
-            # print(count, type(module))
-            # print(output.shape)
-            if len(output.shape) == 4:
-                b, c, w, h = output.shape
-                layer_mata.append((count, type(module).__name__, c, w, h, output.shape))
-            else:
-                # pass
-                print(count, output.shape, type(module))
-
-            # channel[module.name]= output.size()[1]
-            layers.append(module)
-            count += 1
-        except AttributeError:
-            print('Error:', type(module))
-            pass
+        nonlocal count
+        if len(output.shape) == 4:
+            b, c, w, h = output.shape
+            layer_mata.append((count, type(module).__name__, c, w, h, output.shape))
+        layers.append(module)
+        count += 1
 
     for module in flatten_moduleList(model):
         hooks.append(module.register_forward_hook(hook))
 
     # make a forward pass to trigger the hooks
     model(x)
-
-    # remove these hooks
     for h in hooks:
         h.remove()
 
     layer_mata = pd.DataFrame(layer_mata, columns=['sn', 'layer', 'c', 'w', 'h', 'size'])
-    print(layer_mata)
 
     img_size = [x.shape[-1] // (2 ** i) for i in range(8)]
     img_size = [size for size in img_size if size >= 7]
     layer_mata = layer_mata.loc[(layer_mata.w.isin(img_size))].drop_duplicates(['w'], keep='last')
 
-    layer_sn = list(layer_mata.sn)
     layer_size = list(layer_mata['size'])
-    layers = [layers[i] for i in layer_sn]
-    return layer_sn, layer_size, layers
+    layers = [layers[i] for i in layer_mata.sn]
+    return layer_size, layers
 
 
 class DynamicUnet(SequentialEx):
@@ -79,40 +64,23 @@ class DynamicUnet(SequentialEx):
                  y_range: Optional[Tuple[float, float]] = None,
                  last_cross: bool = True, bottle: bool = False, **kwargs):
         imsize = img_size
-        print('type(m)', type(encoder))
-        # 获取output的size
-        # sfs_szs = model_sizes(encoder, size=imsize)
-        # 获取size大小一致的最后一层的Index
-        # sfs_idxs = list(reversed(_get_sfs_idxs(sfs_szs)))
-
-        _, sfs_szs, select_layer = get_unet_config(encoder, img_size)
+        sfs_szs, select_layer = get_unet_config(encoder, img_size)
         ni = sfs_szs[-1][1]
         sfs_szs = list(reversed(sfs_szs[:-1]))
         select_layer = list(reversed(select_layer[:-1]))
-
-        # 获取encode指定层的结果
         self.sfs = hook_outputs(select_layer, detach=False)
-
-        # print('select_layer', select_layer)
-
-        print('self.sfs', type(self.sfs[0]), len(self.sfs), type(self.sfs))
         x = dummy_eval(encoder, imsize).detach()
-        print('encode x', x.shape)
 
-        print('dummy_eval', x.shape, sfs_szs, ni, 'xxxx', kwargs)
         middle_conv = nn.Sequential(conv_layer(ni, ni * 2, **kwargs),
                                     conv_layer(ni * 2, ni, **kwargs)).eval()
         x = middle_conv(x)
         layers = [encoder, batchnorm_2d(ni), nn.ReLU(), middle_conv]
 
         for i, x_size in enumerate(sfs_szs):
-            # print(sfs_idxs)
             not_final = i != len(sfs_szs) - 1
             up_in_c, x_in_c = int(x.shape[1]), int(x_size[1])
             do_blur = blur and (not_final or blur_final)
             sa = self_attention and (i == len(sfs_szs) - 3)
-            print(up_in_c, x_in_c, not_final, do_blur, sa, kwargs)
-            print('x.shape', x.shape)
             unet_block = UnetBlock(up_in_c, x_in_c, self.sfs[i], final_div=not_final, blur=do_blur, self_attention=sa,
                                    **kwargs).eval()
             layers.append(unet_block)
@@ -127,12 +95,8 @@ class DynamicUnet(SequentialEx):
             ni += in_channels(encoder)
             layers.append(res_block(ni, bottle=bottle, **kwargs))
         layers += [conv_layer(ni, n_classes, ks=1, use_activ=False, **kwargs)]
-        # print('y_range', y_range)
         if y_range is not None: layers.append(SigmoidRange(*y_range))
         super().__init__(*layers)
-
-    def __del__(self):
-        if hasattr(self, "sfs"): self.sfs.remove()
 
 
 from efficientnet_pytorch import EfficientNet
