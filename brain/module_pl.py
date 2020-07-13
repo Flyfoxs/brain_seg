@@ -29,6 +29,8 @@ class BrainModel(pl.LightningModule):
         model_fn = UNET_MODEL.get(model_name)
         self.unet = model_fn(n_classes=hparams.n_classes,
                              img_size=hparams.img_size)
+
+        print(self.unet)
         # self.loss_fn = DICELoss().cuda()
         self.loss_fn = partial(F.cross_entropy,
                                weight=torch.tensor([1, 1, 1, 1, 1.0]).cuda())
@@ -139,7 +141,7 @@ class BrainModel(pl.LightningModule):
         #                                           steps_per_epoch=len(self.train_dataloader()),
         #                                           epochs=self.hparams.epochs)
 
-        scheduler = optim.lr_scheduler.StepLR(opt, step_size=10)
+        scheduler = optim.lr_scheduler.StepLR(opt, gamma=0.5, step_size=20)
 
         print('schedule', scheduler)
         return [opt], [scheduler]

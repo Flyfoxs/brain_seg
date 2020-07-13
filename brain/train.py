@@ -1,5 +1,13 @@
 import os
 import sys
+import torch
+import random
+import numpy as np
+# np.random.seed(2020)
+# random.seed(2020)
+# torch.manual_seed(2020)
+# torch.cuda.manual_seed_all(2020)
+# torch.backends.cudnn.benchmark = True
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from pytorch_lightning.callbacks import EarlyStopping
@@ -45,14 +53,21 @@ def main(_config):
     from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
     #lr_logger = LearningRateLogger()
     metric_logger = MetricLogger()
-    #early_stop = EarlyStopping()
+    early_stop = EarlyStopping(
+        monitor='dice',
+        min_delta=0.00,
+        patience=10,
+        verbose=False,
+        mode='max'
+    )
+
     trainer = pl.Trainer(gpus=1,
                          max_epochs=hparams.epochs,
                          num_sanity_val_steps=0,
                          show_progress_bar=False,
                          progress_bar_refresh_rate=0,
                          weights_summary=None,
-                         callbacks=[metric_logger]
+                         callbacks=[metric_logger, early_stop]
                          )
 
     trainer.fit(brain_model)
@@ -78,7 +93,7 @@ if __name__ == '__main__':
     args.imgaug = True
 
     args.seed = np.random.randint(0, 1000)
-    args.version = 'rand1'
+    args.version = 'rand2'
 
     real_conf = args
     real_conf.update(argv_conf)

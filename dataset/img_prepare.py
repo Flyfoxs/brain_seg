@@ -14,14 +14,6 @@ class DataSet_brain(Dataset):
 
         self.df = self.get_df()
 
-        # if ds_type == 'train':
-        #     print('========', ds_type)
-        #     print(df.valid.value_counts())
-        #     self.df = df.loc[df.valid == False]
-        # elif ds_type == 'valid':
-        #     self.df = df.loc[df.valid == True]
-        #
-        #
 
     def get_p_cnt(self, file):
         label = nib.load(file).get_fdata()
@@ -31,17 +23,25 @@ class DataSet_brain(Dataset):
 
     @lru_cache()
     def get_df(self):
-        root = '/share/data2/body/brain/NPH_PROCESSED'
-        file_list = glob(f'{root}/iNPH_*_PROCESSED/*/*.nii.gz')
+        root = '/share/data2/body/brain'
+        file_list = glob(f'{root}/*Baoceng*/*/*.nii.gz', recursive=True)
         df_list = []
         file_list = [file for file in file_list if ' ' not in os.path.basename(file)]
-        # print(len(file_list))
+        print(len(file_list))
         for file in file_list:
             label_cnt = self.get_p_cnt(file)
-            # print(os.path.dirname(file))
-            fold = [fold for fold in glob(f'{os.path.dirname(file)}/*') if os.path.isdir(fold)][0]
-            for dcm_file in glob(f'{fold}/*'):
-                slice_sn = int(dcm_file.split('_')[-1].split('.')[0]) - 1
+            #print(os.path.dirname(file))
+            #fold = [fold for fold in glob(f'{}/*') if os.path.isdir(fold)][0]
+
+            #print(glob(f'{os.path.dirname(file)}/*/*', recursive=True))
+            dcm_list = sorted(glob(f'{os.path.dirname(file)}/*/*', recursive=True),
+                              key=lambda val: int(val.split('_')[-1].split('.')[0]) if '_' in str(val) else val
+                              )
+            if 'Baoceng' in file:
+                dcm_list = list(reversed(dcm_list))
+            print(file)
+            for slice_sn, dcm_file in enumerate(dcm_list):
+                #slice_sn = int(dcm_file.split('_')[-1].split('.')[0]) - 1
                 df_list.append({'input_path': dcm_file,
                                 'label_path': file,
                                 'slice_sn': slice_sn,
@@ -71,18 +71,24 @@ class DataSet_brain(Dataset):
         label = nib.load(label).get_fdata()
         label = label[:, :, slice_sn].T
 
-        label_path = img_path.replace('/NPH_PROCESSED/', '/train_v2/label/')
-        img_path = img_path.replace('/NPH_PROCESSED/', '/train_v2/image/')
+        label_path = img_path.replace('/NPH_PROCESSED/', '/train_v3/label/')
+        img_path = img_path.replace('/NPH_PROCESSED/', '/train_v3/image/')
+
+        label_path = label_path.replace('/Naoweisuo/', '/valid_v3/label/')
+        img_path = img_path.replace('/Naoweisuo/', '/valid_v3/image/')
+
+        label_path = label_path.replace('/NPH-Baoceng-MRI-Processed/', '/valid_baocheng_v3/label/')
+        img_path = img_path.replace('/NPH-Baoceng-MRI-Processed/', '/valid_baocheng_v3/image/')
 
         os.makedirs(os.path.dirname(label_path), exist_ok=True)
         os.makedirs(os.path.dirname(img_path), exist_ok=True)
 
         # print(img_path)
         #img = cv2.resize(img, (224,224))
-        cv2.imwrite(f'{img_path}_{slice_sn:02}_{p_cnt:05}.png', img * 255)
+        cv2.imwrite(f'{img_path}_{slice_sn:03}_{p_cnt:05}.png', img * 255)
 
         #label = cv2.resize(label, (224, 224))
-        cv2.imwrite(f'{label_path}_{slice_sn:02}_{p_cnt:05}.png', label)
+        cv2.imwrite(f'{label_path}_{slice_sn:03}_{p_cnt:05}.png', label)
         # print(img.dtype, label.dtype)
         # return img, label
         return img.astype(np.float32), label.astype(np.uint8)

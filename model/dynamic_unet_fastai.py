@@ -9,15 +9,6 @@ from enum import Enum
 from fastai.vision.models.unet import UnetBlock
 
 
-def flatten_moduleList(module: nn.Module)->List[nn.Module]:
-    "If the ModuleList can be found in children, flatten it. Since ModuleList can not support hook "
-    res_list = []
-    for item in module.children():
-        if isinstance(item, nn.ModuleList):
-            res_list.extend(flatten_moduleList(item))
-        else:
-            res_list.append(item)
-    return res_list
 
 
 def get_unet_config(model, img_size=(512, 512)):
@@ -28,7 +19,18 @@ def get_unet_config(model, img_size=(512, 512)):
     layer_mata = []
     layers = []
 
+    def flatten_moduleList(module: nn.Module) -> List[nn.Module]:
+        "If the ModuleList can be found in children, flatten it. Since ModuleList can not support hook "
+        res_list = []
+        for item in module.children():
+            if isinstance(item, nn.ModuleList):
+                res_list.extend(flatten_moduleList(item))
+            else:
+                res_list.append(item)
+        return res_list
+
     def hook(module, input, output):
+        "To get the meta of the layer infomation"
         nonlocal count
         if len(output.shape) == 4:
             b, c, w, h = output.shape
@@ -63,7 +65,7 @@ class DynamicUnet(SequentialEx):
                  blur_final=True, self_attention: bool = False,
                  y_range: Optional[Tuple[float, float]] = None,
                  last_cross: bool = True, bottle: bool = False, **kwargs):
-        imsize = img_size
+        imsize = tuple(img_size)
         sfs_szs, select_layer = get_unet_config(encoder, img_size)
         ni = sfs_szs[-1][1]
         sfs_szs = list(reversed(sfs_szs[:-1]))
@@ -101,16 +103,13 @@ class DynamicUnet(SequentialEx):
 
 from efficientnet_pytorch import EfficientNet
 
-
 def eff(name='5'):
     class EfficientNet_(EfficientNet):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
         def forward(self, inputs):
-            """ Calls extract_features to extract features, applies final linear layer, and returns logits. """
-            bs = inputs.size(0)
-            # Convolution layers
             x = self.extract_features(inputs)
             return x
-
     return EfficientNet_.from_pretrained(f'efficientnet-b{name}', in_channels=3)
 
 

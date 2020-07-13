@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch
 
 class Resize():
-    def __init__(self, size=(3, 224, 224), mode="bilinear"):
+    def __init__(self, size=(224, 224), mode="bilinear"):
         """
 
         :param size:
